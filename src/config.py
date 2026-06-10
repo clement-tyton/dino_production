@@ -15,17 +15,16 @@ import warnings
 
 warnings.filterwarnings("ignore")   # silence rio-tiler NoOverviewWarning etc. across the pipeline
 
-# ---- env the dinov3 activity reads (MUST be set before importing it) --------------
-os.environ["DINO_WEIGHTS_FOLDER"] = os.environ.get(
-    "DINO_WEIGHTS_FOLDER",
-    "/home/clement/Desktop/projets/1_Core_tyton_AI/tytonai-python-activities/"
-    "dinov3_embedding/test_data/dinov3_weights")
-os.environ.setdefault("S3_FILE_BUCKET", "")          # empty -> S3Mock uses plain local files
-os.environ.setdefault("SAVE_DEBUG_IMG", "false")
-
 # ---- paths (resolved from this file, not cwd; all env-overridable) ----
 _SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = os.path.dirname(_SRC_DIR)
+
+# ---- env the dinov3 activity reads (MUST be set before importing it) --------------
+# Weights default to <repo>/dinov3_weights (portable: gitignored, auto-downloaded from the
+# public GCS bucket on first use). Override with DINO_WEIGHTS_FOLDER if you keep them elsewhere.
+os.environ.setdefault("DINO_WEIGHTS_FOLDER", os.path.join(_REPO_ROOT, "dinov3_weights"))
+os.environ.setdefault("S3_FILE_BUCKET", "")          # empty -> S3Mock uses plain local files
+os.environ.setdefault("SAVE_DEBUG_IMG", "false")
 TRAIN_ROOT = os.environ.get("DINO_TRAIN_ROOT", "/home/clement/local_copy_train_data")
 SITE_DATA_ROOT = os.environ.get("DINO_SITE_DATA_ROOT", "/mnt/spatial/DeepThought/SiteData")  # shared store
 DATASET_VERSION = os.environ.get("DINO_DATASET_VERSION", "v2_tytonai_rg")  # = config dataset_version
