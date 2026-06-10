@@ -10,8 +10,9 @@ failed finding central directory". This script instead:
   - downloads sequentially in small chunks with a live progress bar + MB/s,
   - writes to <file>.part and RESUMES from wherever a previous run stopped,
   - retries each chunk on timeout (backoff) instead of nuking the whole download,
-  - validates COMPLETENESS by size (the 7B checkpoint is legacy torch .tar, not a zip, so a
-    format check would wrongly reject it) before renaming to the final name.
+  - writes a .ok marker after a verified complete download, and trusts an existing file ONLY if
+    that marker matches — because the lib's downloader pre-allocates the file to full size, a
+    plain size check accepts a corrupt full-size .pth ("filename 'storages' not found" at load).
 
 Usage (repo root, project venv), default = the 7B; pass vitl for the small one:
     .venv/bin/python download_weights.py            # dinov3_vit7b16
@@ -52,6 +53,7 @@ async def download(model: str) -> Path:
     model_path = LARGE_MODEL_PATH if model == LARGE_MODEL else SMALL_MODEL_PATH
     final = Path(DINO_WEIGHTS_FOLDER) / model_path
     part = final.with_suffix(final.suffix + ".part")
+    ok_marker = final.with_suffix(final.suffix + ".ok")     # written only after a verified seq. download
     final.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"weights folder : {DINO_WEIGHTS_FOLDER}")
@@ -63,16 +65,21 @@ async def download(model: str) -> Path:
     print(f"timeout        : {TIMEOUT} per request (connect {CONNECT_TIMEOUT})")
     size = (await store.head_async(model_path))["size"]
 
-    # Validate by COMPLETENESS (size), not format: the 7B checkpoint is legacy torch .tar, not a
-    # zip, so zipfile.is_zipfile would wrongly reject a perfectly good file. A truncated download
-    # is shorter than the remote object; a complete one matches it byte-for-byte.
+    # Trust an existing file ONLY if THIS tool wrote it and verified it (the .ok marker). Size alone
+    # is NOT enough: the activity's lib downloader PRE-ALLOCATES the file to full size (f.truncate)
+    # before writing chunks, so a timed-out download leaves a full-size but CORRUPT .pth that a
+    # size check wrongly accepts ("filename 'storages' not found" at load). Any file without a
+    # matching .ok marker (lib-made or hand-placed) is re-downloaded clean.
+    trusted = (final.exists() and ok_marker.exists()
+               and ok_marker.read_text().strip() == str(size) and final.stat().st_size == size)
+    if trusted:
+        print(f"already on disk: {final}  ({_human(size)}) -> verified (.ok), nothing to do")
+        return final
     if final.exists():
-        ok = final.stat().st_size == size
-        print(f"already on disk: {final}  ({_human(final.stat().st_size)} / {_human(size)}) "
-              f"-> {'complete, nothing to do' if ok else 'TRUNCATED — deleting'}")
-        if ok:
-            return final
+        print(f"existing {final.name} ({_human(final.stat().st_size)}) not verified by this tool "
+              f"-> re-downloading clean")
         final.unlink()
+    ok_marker.unlink(missing_ok=True)
 
     done = part.stat().st_size if part.exists() else 0
     if done > size:                                          # stale/oversized .part -> restart clean
@@ -108,6 +115,7 @@ async def download(model: str) -> Path:
     if part.stat().st_size != size:                          # completeness guard before promoting
         raise RuntimeError(f"size mismatch {part.stat().st_size} != {size}; .part kept, re-run to resume.")
     part.rename(final)
+    ok_marker.write_text(str(size))                          # mark as verified -> trusted on next run
     print(f"done -> {final}  ({_human(final.stat().st_size)}, {time.monotonic()-t0:.0f}s)")
     return final
 
