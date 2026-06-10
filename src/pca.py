@@ -126,6 +126,21 @@ def site_pca_canvas(npz_paths, geoms, pca=None, device="cuda"):
     return canvas, rasterio.Affine(gsd, 0, xmin, 0, -gsd, ymax), gsd
 
 
+def webmap_from_manifest(site_id, emb_root=config.EMB_ROOT, webmap_path=None, out_tif=None):
+    """Rebuild a site's PCA webmap from its saved cells.parquet (no re-embedding).
+
+    Reads the manifest (cell_id, patch_npz, geometry) at <emb_root>/cells/site_id=<id>/, in
+    cell_id order, and calls build_pca_webmap on the existing .npz. Handy to re-render after a
+    rendering change (e.g. the nodata fix). webmap_path enables the RGB nodata mask.
+    """
+    import geopandas as gpd
+    man = gpd.read_parquet(os.path.join(emb_root, "cells", f"site_id={site_id}", "cells.parquet"))
+    man = man.sort_values("cell_id")
+    npz = [os.path.join(emb_root, p) for p in man["patch_npz"]]
+    out_tif = out_tif or os.path.join(emb_root, site_id, "dino_pca_webmap.tif")
+    return build_pca_webmap(npz, list(man.geometry), man.crs, out_tif, webmap_path=webmap_path)
+
+
 def webmap_data_mask(webmap_path, transform, H, W):
     """(H, W) bool — True where the webmap has RGB data, over the canvas extent (one read).
     Used to mark nodata in the PCA webmap so real no-data areas are transparent in QGIS."""
