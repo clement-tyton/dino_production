@@ -67,10 +67,41 @@ def webmap_extent(webmap_path, dst_crs):
     return gpd.GeoDataFrame({"src_crs": [str(src_crs)]}, geometry=[box(*bb)], crs=dst_crs)
 
 
-def crop_tiles_to_webmap(gdf, webmap_path):
-    """Clip tile bboxes to the webmap extent. Returns (clipped_tiles, extent_gdf)."""
-    ext = webmap_extent(webmap_path, gdf.crs)
-    clipped = gpd.clip(gdf, ext)                      # crops geometries to the rectangle
+def webmap_footprint(webmap_path, dst_crs, max_dim=2000, min_area_px=64):
+    """The webmap's actual DATA footprint (non-black RGB) as a polygon, reprojected to dst_crs.
+
+    Cheap: reads a decimated overview (longest side <= max_dim), masks where any of R/G/B != 0,
+    and vectorizes that mask (rasterio.features.shapes). Drops speckle polygons < min_area_px
+    decimated pixels. Falls back to the rectangular bounds if nothing vectorizes.
+    """
+    from rasterio import features
+    from shapely.geometry import shape as _shape
+    with rasterio.open(webmap_path) as r:
+        scale = max(1, max(r.width, r.height) // max_dim)
+        oh, ow = max(1, r.height // scale), max(1, r.width // scale)
+        rgb = r.read((1, 2, 3), out_shape=(3, oh, ow))
+        mask = (rgb != 0).any(axis=0)                                  # True where imaged
+        t = r.transform * r.transform.scale(r.width / ow, r.height / oh)
+        src_crs = r.crs
+    polys = [_shape(g) for g, v in features.shapes(mask.astype("uint8"), mask=mask, transform=t)
+             if v == 1]
+    polys = [p for p in polys if p.area >= min_area_px * abs(t.a) * abs(t.e)]
+    if not polys:
+        return webmap_extent(webmap_path, dst_crs)
+    from shapely import union_all
+    foot = union_all(polys).simplify(abs(t.a))                         # ~1 decimated-pixel tolerance
+    g = gpd.GeoDataFrame({"src_crs": [str(src_crs)]}, geometry=[foot], crs=src_crs)
+    return g.to_crs(dst_crs)
+
+
+def crop_tiles_to_webmap(gdf, webmap_path, footprint=True):
+    """Clip tile bboxes to the webmap. Returns (clipped_tiles, extent_gdf).
+
+    footprint=True  -> clip to the real data footprint polygon (non-nodata) — tighter, nicer;
+    footprint=False -> clip to the rectangular bounds (cheaper, the old behaviour).
+    """
+    ext = webmap_footprint(webmap_path, gdf.crs) if footprint else webmap_extent(webmap_path, gdf.crs)
+    clipped = gpd.clip(gdf, ext)                      # crops geometries to the polygon / rectangle
     return clipped, ext
 
 
