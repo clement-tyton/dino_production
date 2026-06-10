@@ -22,24 +22,32 @@ import pca
 def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=config.EMB_ROOT,
              dino_model=config.DINO_MODEL, high_res=config.HIGH_RES,
              tile_patches=config.TILE_PATCHES, min_data_cov=config.MIN_DATA_COV,
-             upsample=None, make_plots=False, make_webmap=True, show_bar=True) -> dict:
+             upsample=None, make_plots=False, make_webmap=True, show_bar=True, resume=True) -> dict:
     """Build + embed every grid cell of one site. Returns a summary dict.
 
     Two ways to point at a site:
       - site_key='<Project>/<Site>' (+ optional res): tiles + webmap resolved from the shared
         /mnt store (config.resolve_tiles / resolve_rgb) — this is the MULTI-SITE entry point.
       - site_dir=<path>: an explicit tiles dir (e.g. a local copy); key/res derived from it.
+    resume=True: skip (return {"skipped": True}) if the site's cells.parquet already exists.
     Outputs under out_root/<site_id>/ + the Hive-partitioned out_root/cells/site_id=<id>/.
     """
     if site_dir is None:
         if site_key is None:
             raise ValueError("pass site_key='<Project>/<Site>' (multi-site) or site_dir=<path>")
         res = res or config.default_res(site_key)
-        site_dir = config.resolve_tiles(site_key, res)        # /mnt ObjectData tiles
         site_id = config.site_id_from_key(site_key, res)
     else:
         site_key = config.site_key_from_dir(site_dir)
         site_id = config.site_id_from_dir(site_dir)
+
+    part_dir = os.path.join(out_root, "cells", f"site_id={site_id}")
+    if resume and os.path.exists(os.path.join(part_dir, "cells.parquet")):
+        print(f"[{site_id}] already embedded -> skip")
+        return {"site_id": site_id, "skipped": True}
+
+    if site_dir is None:
+        site_dir = config.resolve_tiles(site_key, res)        # /mnt ObjectData tiles
     if rgb_path is None:
         rgb_path = config.resolve_rgb(site_key, res)["rgb_path"]
 
@@ -87,18 +95,62 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
             "qa_png": qa_png, "npz_paths": npz_paths}
 
 
+def all_site_keys():
+    """Every site in the catalog (config/sites_to_resolutions.json), file order."""
+    return list(config._load_json("sites_to_resolutions.json"))
+
+
+def run_sites(site_keys=None, *, res=None, out_root=config.EMB_ROOT, shard=None, limit=None,
+              **run_kw) -> dict:
+    """Embed many sites. site_keys=None -> ALL in the catalog. Skips (and reports) sites with
+    no resolved webmap / no tiles. shard=(i, n) takes site_keys[i::n] (run n terminals, one GPU
+    each via CUDA_VISIBLE_DEVICES). resume defaults on, so re-running continues where it stopped.
+    """
+    keys = list(site_keys) if site_keys is not None else all_site_keys()
+    if shard is not None:
+        i, n = shard
+        keys = keys[i::n]
+    if limit:
+        keys = keys[:limit]
+    done, fails = [], []
+    for k, key in enumerate(keys, 1):
+        print(f"\n===== [{k}/{len(keys)}] {key} =====", flush=True)
+        try:
+            r = run_site(site_key=key, res=res, out_root=out_root, **run_kw)
+            done.append(r)
+        except (KeyError, FileNotFoundError) as e:           # no webmap / no tiles -> expected skip
+            print(f"  SKIP: {e}"); fails.append((key, "skip", str(e)))
+        except Exception as e:                                # anything else -> record + keep going
+            print(f"  FAIL: {e}"); fails.append((key, "fail", str(e)))
+    embedded = sum(not r.get("skipped") for r in done)
+    print(f"\n===== {len(done)}/{len(keys)} ok ({embedded} embedded, {len(done)-embedded} already-done) "
+          f"| {len(fails)} skipped/failed =====")
+    for key, kind, msg in fails:
+        print(f"  {kind.upper():4s} {key}: {msg[:80]}")
+    return {"done": done, "fails": fails, "keys": keys}
+
+
 if __name__ == "__main__":
     import argparse
-    ap = argparse.ArgumentParser(description="Embed one site's grid with DINOv3 + PCA webmap.")
+    ap = argparse.ArgumentParser(description="Embed site grid(s) with DINOv3 + PCA webmap.")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--site-key", help="'<Project>/<Site>' — resolves tiles + webmap from /mnt")
     g.add_argument("--site-dir", help="explicit tiles dir …/<res>/v2_tytonai_rg (e.g. a local copy)")
+    g.add_argument("--all-sites", action="store_true", help="every site in the catalog")
     ap.add_argument("--res", default=None, help="resolution (e.g. 10cm); default = the site's native")
     ap.add_argument("--rgb-path", default=None, help="override the webmap raster (else resolved from config)")
     ap.add_argument("--out-root", default=config.EMB_ROOT)
     ap.add_argument("--upsample", type=int, default=None, help="forward upscale (2=1024, 4=2048)")
+    ap.add_argument("--shard", default=None, help="i/n — run sites[i::n] (with --all-sites)")
+    ap.add_argument("--limit", type=int, default=None, help="only the first N sites (with --all-sites)")
     ap.add_argument("--no-webmap", dest="make_webmap", action="store_false")
+    ap.add_argument("--no-resume", dest="resume", action="store_false")
     ap.add_argument("--plots", dest="make_plots", action="store_true")
     a = ap.parse_args()
-    run_site(site_dir=a.site_dir, site_key=a.site_key, res=a.res, rgb_path=a.rgb_path,
-             out_root=a.out_root, upsample=a.upsample, make_webmap=a.make_webmap, make_plots=a.make_plots)
+    common = dict(res=a.res, out_root=a.out_root, upsample=a.upsample,
+                  make_webmap=a.make_webmap, make_plots=a.make_plots, resume=a.resume)
+    if a.all_sites:
+        shard = tuple(int(x) for x in a.shard.split("/")) if a.shard else None
+        run_sites(shard=shard, limit=a.limit, **common)
+    else:
+        run_site(site_dir=a.site_dir, site_key=a.site_key, rgb_path=a.rgb_path, **common)
