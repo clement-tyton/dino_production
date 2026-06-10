@@ -130,6 +130,33 @@ def run_sites(site_keys=None, *, res=None, out_root=config.EMB_ROOT, shard=None,
     return {"done": done, "fails": fails, "keys": keys}
 
 
+def _gpu_worker(gpu, idx, n, site_keys, run_kw):
+    """Child process pinned to ONE GPU, running sites[idx::n]. Pins CUDA_VISIBLE_DEVICES
+    BEFORE any torch import (our modules import torch lazily, so this holds)."""
+    import os as _os
+    import sys as _sys
+    _os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu)
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import pipeline as _pl
+    print(f"[gpu {gpu}] shard {idx}/{n}", flush=True)
+    _pl.run_sites(site_keys, shard=(idx, n), **run_kw)
+
+
+def run_all_gpus(gpus=(0, 1), site_keys=None, **run_kw):
+    """One command -> one process per GPU, each embedding sites[i::len(gpus)] (modulo split).
+    Uses spawn so each child gets a fresh CUDA context pinned to its GPU. Output interleaves;
+    for clean per-GPU progress bars run two terminals with --shard instead (see below)."""
+    import multiprocessing as mp
+    keys = list(site_keys) if site_keys is not None else all_site_keys()
+    ctx = mp.get_context("spawn")
+    procs = [ctx.Process(target=_gpu_worker, args=(g, i, len(gpus), keys, run_kw))
+             for i, g in enumerate(gpus)]
+    for p in procs:
+        p.start()
+    for p in procs:
+        p.join()
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Embed site grid(s) with DINOv3 + PCA webmap.")
@@ -141,7 +168,8 @@ if __name__ == "__main__":
     ap.add_argument("--rgb-path", default=None, help="override the webmap raster (else resolved from config)")
     ap.add_argument("--out-root", default=config.EMB_ROOT)
     ap.add_argument("--upsample", type=int, default=None, help="forward upscale (2=1024, 4=2048)")
-    ap.add_argument("--shard", default=None, help="i/n — run sites[i::n] (with --all-sites)")
+    ap.add_argument("--shard", default=None, help="i/n — run sites[i::n] (one terminal/GPU)")
+    ap.add_argument("--gpus", default=None, help="comma ids, e.g. 0,1 — spawn one process per GPU")
     ap.add_argument("--limit", type=int, default=None, help="only the first N sites (with --all-sites)")
     ap.add_argument("--no-webmap", dest="make_webmap", action="store_false")
     ap.add_argument("--no-resume", dest="resume", action="store_false")
@@ -150,7 +178,10 @@ if __name__ == "__main__":
     common = dict(res=a.res, out_root=a.out_root, upsample=a.upsample,
                   make_webmap=a.make_webmap, make_plots=a.make_plots, resume=a.resume)
     if a.all_sites:
-        shard = tuple(int(x) for x in a.shard.split("/")) if a.shard else None
-        run_sites(shard=shard, limit=a.limit, **common)
+        if a.gpus:                                            # one command -> one process per GPU
+            run_all_gpus(gpus=tuple(int(x) for x in a.gpus.split(",")), **common)
+        else:
+            shard = tuple(int(x) for x in a.shard.split("/")) if a.shard else None
+            run_sites(shard=shard, limit=a.limit, **common)
     else:
         run_site(site_dir=a.site_dir, site_key=a.site_key, rgb_path=a.rgb_path, **common)

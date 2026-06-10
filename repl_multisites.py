@@ -46,8 +46,12 @@ res = pipeline.run_sites(ok, make_webmap=True, make_plots=False)
 print("embedded/ok:", len(res["done"]), "| skipped/failed:", len(res["fails"]))
 
 
-# %% CELL 5 — (optional) 2-GPU: run this file in TWO terminals -----------------------
-# Terminal A:  CUDA_VISIBLE_DEVICES=0 SHARD=0 python repl_multisites.py
-# Terminal B:  CUDA_VISIBLE_DEVICES=1 SHARD=1 python repl_multisites.py
-# shard = int(os.environ.get("SHARD", "0"))
-# pipeline.run_sites(ok, shard=(shard, 2), make_webmap=True)
+# %% CELL 5 — (optional) 2-GPU on the server: sites split modulo across GPU 0 and 1 -----
+# Option A — ONE command, one process per GPU (output interleaves):
+# pipeline.run_all_gpus(gpus=(0, 1), site_keys=ok, make_webmap=True)
+#
+# Option B — TWO terminals (clean per-GPU progress bars), each its own GPU + shard:
+#   CUDA_VISIBLE_DEVICES=0 python src/pipeline.py --all-sites --shard 0/2
+#   CUDA_VISIBLE_DEVICES=1 python src/pipeline.py --all-sites --shard 1/2
+# (or from the CLI in one go:  python src/pipeline.py --all-sites --gpus 0,1)
+# Both are resume-safe and split sites[i::2], so the two GPUs never touch the same site.
