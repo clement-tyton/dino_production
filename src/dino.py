@@ -24,6 +24,23 @@ def muted():
         yield
 
 
+def pick_dino_model(min_gb_7b=config.VRAM_GB_FOR_7B, verbose=True):
+    """Choose dinov3_vit7b16 if the GPU has >= min_gb_7b of VRAM, else dinov3_vitl16.
+    Prints the GPU + chosen model. Falls back to ViT-L if there's no CUDA device."""
+    import torch
+    if not torch.cuda.is_available():
+        if verbose:
+            print("GPU: none (CPU) -> dinov3_vitl16")
+        return "dinov3_vitl16"
+    p = torch.cuda.get_device_properties(0)
+    gb = p.total_memory / 1e9
+    model = "dinov3_vit7b16" if gb >= min_gb_7b else "dinov3_vitl16"
+    if verbose:
+        print(f"GPU: {p.name} ({gb:.0f} GB VRAM) -> {model} "
+              f"({'fits 7B' if model.endswith('7b16') else f'< {min_gb_7b:.0f} GB, using ViT-L'})")
+    return model
+
+
 def setup_activity(webmap_path, grid_gdf, out_fgb=None,
                    dino_model=config.DINO_MODEL, high_res=config.HIGH_RES):
     """Instantiate the activity once + load its model. Returns (act, model, device, grid_in_raster_crs).
@@ -37,6 +54,8 @@ def setup_activity(webmap_path, grid_gdf, out_fgb=None,
     from dinov3_embedding.io_schema.model import Input
     from dinov3_embedding.main import Dinov3Embedding
 
+    if dino_model in (None, "auto"):
+        dino_model = pick_dino_model()        # choose 7B vs ViT-L by GPU VRAM (+ print)
     out_fgb = out_fgb or os.path.join(config.PIC_DIR, "grid.fgb")
     with rasterio.open(webmap_path) as r:
         wcrs = r.crs

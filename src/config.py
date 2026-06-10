@@ -36,7 +36,8 @@ STATS_PARQUET = os.path.join(CONFIG_DIR, "tiles_stat_db", "site_resolution.parqu
 os.makedirs(PIC_DIR, exist_ok=True)
 
 # ---- tunables ----
-DINO_MODEL = os.environ.get("DINO_MODEL", "dinov3_vitl16")   # or "dinov3_vit7b16"
+DINO_MODEL = os.environ.get("DINO_MODEL", "auto")   # "auto" picks 7B vs ViT-L by GPU VRAM
+VRAM_GB_FOR_7B = float(os.environ.get("DINO_VRAM_GB_FOR_7B", "40"))  # >= this -> dinov3_vit7b16
 HIGH_RES = os.environ.get("DINO_HIGH_RES", "0") == "1"       # doubles the upsample factor
 TILE_PATCHES = 1            # grid cell native size = TILE_PATCHES * patch_size
 MIN_DATA_COV = 0.02         # drop grid cells with < this fraction of RGB data (all-black voids)
