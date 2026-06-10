@@ -74,6 +74,13 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
                                           upsample=upsample, show_bar=show_bar, desc=site_id)
     sink.write_manifest(grid_w, npz_paths, cls_vecs, site_id, part_dir, emb_root=out_root)
 
+    # self-describing meta.json (resolved model + effective upscale read back from the activity)
+    _rm = getattr(getattr(act, "input_model", None), "dino_model", None)
+    resolved_model = _rm.value if _rm is not None else dino_model
+    eff_upsample = upsample if upsample is not None else getattr(act, "patch_upsample_factor", None)
+    sink.write_site_meta(site_id, part_dir, ginfo, npz_paths, dino_model=resolved_model,
+                         high_res=high_res, upsample=eff_upsample, emb_root=out_root)
+
     webmap_tif = None
     if make_webmap and npz_paths:
         webmap_tif = os.path.join(out_root, site_id, "dino_pca_webmap.tif")
