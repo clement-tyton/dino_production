@@ -119,14 +119,17 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     if rgb_mode:
-        # one row per cell: [source RGB | PCA-RGB]
-        fig, axes = plt.subplots(len(idxs), 2, figsize=(6, 3 * len(idxs)))
+        # 3 cells per row, each cell = [source RGB | PCA-RGB] -> 6 columns, ceil(n/3) rows
+        per_row = 3
+        rows = (len(idxs) + per_row - 1) // per_row
+        fig, axes = plt.subplots(rows, per_row * 2, figsize=(per_row * 2 * 2.0, rows * 2.0))
         axes = np.atleast_2d(axes)
-        for row, (i, rgb, pca_img) in enumerate(zip(idxs, rgbs, imgs)):
-            axes[row, 0].imshow(rgb); axes[row, 0].set_title(f"{i:04d} RGB", fontsize=8)
-            axes[row, 1].imshow(pca_img); axes[row, 1].set_title(f"{i:04d} PCA", fontsize=8)
-            for c in (0, 1):
-                axes[row, c].axis("off")
+        for ax in axes.ravel():
+            ax.axis("off")
+        for k, (i, rgb, pca_img) in enumerate(zip(idxs, rgbs, imgs)):
+            r, c = divmod(k, per_row)
+            axes[r, c * 2].imshow(rgb); axes[r, c * 2].set_title(f"{i:04d} RGB", fontsize=8)
+            axes[r, c * 2 + 1].imshow(pca_img); axes[r, c * 2 + 1].set_title(f"{i:04d} PCA", fontsize=8)
         suffix = "_rgbpca"
     else:
         cols = min(4, len(imgs)); rows = (len(imgs) + cols - 1) // cols
