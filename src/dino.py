@@ -82,12 +82,39 @@ def setup_activity(webmap_path, grid_gdf, out_fgb=None,
                                 "rasters": [{"bands": ["RED", "GREEN", "BLUE"], "raster_file": webmap_path}]})
     act = Dinov3Embedding(inp, "", S3Mock(working_dir="/"))
     _trust_torch_load()                                # PyTorch 2.6 weights_only fix (legacy .tar 7B)
-    model, device = asyncio.run(act.load_model())      # the activity's own loader (FP32)
-    if config.DINO_DTYPE == "bf16":                    # halve weight VRAM (25->12.5GB on 7B) + bf16 activations
-        import torch
-        model = model.to(torch.bfloat16)               # upsample/grid untouched -> upscaling preserved
-        print("dtype: bfloat16 (weights ~half VRAM, activations halved; outputs cast back to fp32)")
+    model, device = _load_model_lowmem(act)            # CPU-load -> cast -> GPU (avoids the activity OOM)
     return act, model, device, grid_w
+
+
+def _load_model_lowmem(act):
+    """Memory-efficient replacement for act.load_model() — and where DINO_DTYPE is applied.
+
+    The activity's own loader (dinov3_embedding/main.py:286-292) puts TWO fp32 copies on the GPU
+    at once: it ``torch.load(map_location="cuda")`` the 26.8 GB state_dict AND builds the model on
+    cuda -> ~53 GB peak -> OOM on a 48 GB card for the 7B (this is the "loading model to gpu" OOM).
+    Worse, our earlier post-hoc ``model.to(bfloat16)`` ran AFTER that, so bf16 never helped the load.
+
+    Here we load the state_dict into CPU RAM, build the model on CPU, cast to bf16 THERE (if
+    requested), and only THEN move it to the GPU -> peak GPU = 13.4 GB (bf16) / 26.8 GB (fp32).
+    Mirrors the activity's get_dino_model + load_state_dict exactly; the upsample/grid are untouched.
+    """
+    import asyncio
+    import torch
+    from dinov3_embedding.backbones import get_dino_model
+    from dinov3_embedding.download import download_dino_model_async
+    name = act.input_model.dino_model.value
+    device = torch.device("cuda")
+    local_file = asyncio.run(download_dino_model_async(name))     # already on disk -> returns path
+    state_dict = torch.load(local_file, map_location="cpu")       # 26.8 GB in CPU RAM, NOT on the GPU
+    model = get_dino_model(name, device=torch.device("cpu"))      # build the architecture on CPU
+    model.load_state_dict(state_dict, strict=True)
+    del state_dict                                                # free the CPU copy before the GPU move
+    if config.DINO_DTYPE == "bf16":
+        model = model.to(torch.bfloat16)                          # cast on CPU -> only 13.4 GB hits the GPU
+        print("dtype: bfloat16 (weights ~half VRAM, activations halved; outputs cast back to fp32)")
+    model = model.to(device)                                      # only now -> GPU
+    model.eval()
+    return model, device
 
 
 def embed_cell(act, model, device, bbox, webmap_path):

@@ -133,17 +133,17 @@ def plot_qa_grid(tiles, tiles_clip, extent, area, grid, info=None, out_png=None,
     return out_png
 
 
-def plot_site_pca(npz_paths, geoms, out_png, webmap_path=None):
+def plot_site_pca(refs, geoms, out_png, webmap_path=None):
     """Site patch-level PCA-RGB mosaic (PNG). If webmap_path is given, no-data shows white
     (matching the transparent nodata in the QGIS GeoTIFF)."""
-    canvas, transform, gsd = site_pca_canvas(npz_paths, geoms)
+    canvas, transform, gsd = site_pca_canvas(refs, geoms)
     if webmap_path:
         H, W = canvas.shape[:2]
         canvas = canvas.copy()
         canvas[~webmap_data_mask(webmap_path, transform, H, W)] = 1.0   # no-data -> white
     fig, ax = plt.subplots(figsize=(13, 13))
     ax.imshow(canvas); ax.axis("off")
-    ax.set_title(f"site patch-level PCA-RGB — {len(npz_paths)} cells @ {gsd:.2f} m")
+    ax.set_title(f"site patch-level PCA-RGB — {len(refs)} cells @ {gsd:.2f} m")
     os.makedirs(os.path.dirname(os.path.abspath(out_png)), exist_ok=True)
     fig.savefig(out_png, dpi=130, bbox_inches="tight"); plt.close(fig)
     return out_png

@@ -59,7 +59,7 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
                                              min_data_cov=min_data_cov)
     print(f"[{site_id}] {len(tiles)} tiles -> {ginfo['n_cells']} cells {ginfo}")
 
-    patch_dir, part_dir = sink.site_emb_dirs(site_id, out_root)
+    site_dir, part_dir = sink.site_emb_dirs(site_id, out_root)
 
     # per-site 2x2 QA control image (tiles -> crop -> study area -> grid), always written
     import plots
@@ -70,21 +70,21 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
 
     act, model, device, grid_w = dino.setup_activity(rgb_path, grid, dino_model=dino_model,
                                                      high_res=high_res)
-    npz_paths, cls_vecs = sink.embed_grid(act, model, device, grid_w, rgb_path, patch_dir,
-                                          upsample=upsample, show_bar=show_bar, desc=site_id)
-    sink.write_manifest(grid_w, npz_paths, cls_vecs, site_id, part_dir, emb_root=out_root)
+    refs, cls_vecs = sink.embed_grid(act, model, device, grid_w, rgb_path, site_dir,
+                                     upsample=upsample, show_bar=show_bar, desc=site_id)
+    sink.write_manifest(grid_w, refs, cls_vecs, site_id, part_dir, emb_root=out_root)
 
     # self-describing meta.json (resolved model + effective upscale read back from the activity)
     _rm = getattr(getattr(act, "input_model", None), "dino_model", None)
     resolved_model = _rm.value if _rm is not None else dino_model
     eff_upsample = upsample if upsample is not None else getattr(act, "patch_upsample_factor", None)
-    sink.write_site_meta(site_id, part_dir, ginfo, npz_paths, dino_model=resolved_model,
+    sink.write_site_meta(site_id, part_dir, ginfo, refs, dino_model=resolved_model,
                          high_res=high_res, upsample=eff_upsample, emb_root=out_root)
 
     webmap_tif = None
-    if make_webmap and npz_paths:
+    if make_webmap and refs:
         webmap_tif = os.path.join(out_root, site_id, "dino_pca_webmap.tif")
-        pca.build_pca_webmap(npz_paths, list(grid_w.geometry), grid_w.crs, webmap_tif,
+        pca.build_pca_webmap(refs, list(grid_w.geometry), grid_w.crs, webmap_tif,
                              webmap_path=rgb_path)
 
     if make_plots:
@@ -93,15 +93,15 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
         plots.plot_webmap_crop(tiles, tiles_clip, extent)
         plots.plot_study_area(tiles_clip, area)
         plots.plot_grid(tiles_clip, area, grid, info=ginfo)
-        if npz_paths:
-            plots.plot_site_pca(npz_paths, list(grid_w.geometry),
+        if refs:
+            plots.plot_site_pca(refs, list(grid_w.geometry),
                                 os.path.join(out_root, site_id, "site_patch_pca.png"),
                                 webmap_path=rgb_path)
 
-    print(f"[{site_id}] done: {len(npz_paths)} cells -> {patch_dir}  |  {part_dir}/cells.parquet")
+    print(f"[{site_id}] done: {len(refs)} cells -> {site_dir}/patches.zarr  |  {part_dir}/cells.parquet")
     return {"site_id": site_id, "n_tiles": len(tiles), "n_cells": len(grid_w), "ginfo": ginfo,
-            "patch_dir": patch_dir, "part_dir": part_dir, "webmap_tif": webmap_tif,
-            "qa_png": qa_png, "npz_paths": npz_paths}
+            "site_dir": site_dir, "part_dir": part_dir, "webmap_tif": webmap_tif,
+            "qa_png": qa_png, "patch_refs": refs}
 
 
 def all_site_keys():

@@ -9,6 +9,7 @@ dependencies = [
     "matplotlib>=3.10.9",
     "pyarrow>=24.0.0",
     "tqdm>=4.68.1",
+    "zarr>=3.0.0",               # one chunked patches.zarr per site (replaces per-cell .npz)
     "bbox_to_tile_grid"
 ]
 
