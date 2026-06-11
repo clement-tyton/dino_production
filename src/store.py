@@ -46,19 +46,23 @@ def embed_grid(act, model, device, grid_w, webmap_path, site_dir, upsample=None,
     """
     geoms = list(grid_w.geometry)
     zpath = patch_io.zarr_path(site_dir)
-    z, refs, cls_list = None, [], []
-    it = tqdm(geoms, desc=desc[:22] or "cells", unit="cell") if show_bar else geoms
-    for i, geom in enumerate(it):
-        _, emb, cls, _ = embed_cell_tokens(act, model, device, tuple(geom.bounds),
-                                           webmap_path, upsample=upsample)   # emb = (C, gh, gw)
-        grid = emb.transpose(1, 2, 0).astype(np.float16)                     # (gh, gw, C)
-        if z is None:
-            z = patch_io.create(site_dir, len(geoms), *grid.shape)           # shape known now
-        z[i] = grid
-        refs.append(patch_io.make_ref(zpath, i))
-        cls_list.append(cls)
-    cls_vecs = np.asarray(cls_list, dtype=np.float32) if cls_list else np.zeros((0, 0), np.float32)
-    return refs, cls_vecs
+    lock = patch_io.acquire_write_lock(site_dir)        # refuse a 2nd concurrent writer (corruption guard)
+    try:
+        z, refs, cls_list = None, [], []
+        it = tqdm(geoms, desc=desc[:22] or "cells", unit="cell") if show_bar else geoms
+        for i, geom in enumerate(it):
+            _, emb, cls, _ = embed_cell_tokens(act, model, device, tuple(geom.bounds),
+                                               webmap_path, upsample=upsample)   # emb = (C, gh, gw)
+            grid = emb.transpose(1, 2, 0).astype(np.float16)                 # (gh, gw, C)
+            if z is None:
+                z = patch_io.create(site_dir, len(geoms), *grid.shape)       # shape known now
+            z[i] = grid
+            refs.append(patch_io.make_ref(zpath, i))
+            cls_list.append(cls)
+        cls_vecs = np.asarray(cls_list, dtype=np.float32) if cls_list else np.zeros((0, 0), np.float32)
+        return refs, cls_vecs
+    finally:
+        patch_io.release_write_lock(lock)
 
 
 def write_manifest(grid_w, refs, cls_vecs, site_id, part_dir, emb_root=config.EMB_ROOT):

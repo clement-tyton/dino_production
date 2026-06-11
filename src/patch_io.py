@@ -27,6 +27,44 @@ def zarr_path(site_dir: str) -> str:
     return os.path.join(site_dir, ZARR_NAME)
 
 
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False                      # no such process
+    except PermissionError:
+        return True                       # exists but owned by another user -> alive
+    except OSError:
+        return False
+    return True
+
+
+def acquire_write_lock(site_dir: str) -> str:
+    """Refuse to start a 2nd concurrent writer on a site — two processes calling create(overwrite)
+    on the same patches.zarr clear each other's chunks + metadata and silently corrupt it (cells
+    become 0). Writes <site_dir>/.writing.lock with our PID; steals a stale lock (dead PID)."""
+    lock = os.path.join(site_dir, ".writing.lock")
+    if os.path.exists(lock):
+        try:
+            old = int(open(lock).read().strip())
+        except Exception:
+            old = None
+        if old and old != os.getpid() and _pid_alive(old):
+            raise RuntimeError(
+                f"{zarr_path(site_dir)} is already being written by PID {old} — refusing a second "
+                f"writer (it would corrupt the zarr). Run ONE process per shard.")
+    with open(lock, "w") as f:
+        f.write(str(os.getpid()))
+    return lock
+
+
+def release_write_lock(lock: str) -> None:
+    try:
+        os.remove(lock)
+    except OSError:
+        pass
+
+
 def create(site_dir: str, n_cells: int, gh: int, gw: int, c: int):
     """Create (overwrite) the site's patches.zarr and return the writable array. Chunk = 1 cell."""
     return zarr.create_array(
