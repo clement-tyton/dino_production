@@ -8,6 +8,8 @@ class masks with proper legends.
 from __future__ import annotations
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")                 # headless-safe: no Tk backend (avoids Tcl_AsyncDelete core dump)
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch

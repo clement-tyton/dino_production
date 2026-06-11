@@ -7,6 +7,8 @@ from __future__ import annotations
 import os
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")                 # headless-safe: no Tk backend (avoids Tcl_AsyncDelete core dump)
 import matplotlib.pyplot as plt
 import rasterio
 from rasterio.windows import from_bounds
