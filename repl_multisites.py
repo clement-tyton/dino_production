@@ -24,11 +24,20 @@ except NameError:        # bare REPL paste (no __file__) -> cwd must be the repo
 _SRC = os.path.join(_ROOT, "src")
 sys.path.insert(0, _ROOT)   # repo root -> import download_weights
 sys.path.insert(0, _SRC)
+
+# --- OUTPUT LOCATION (MUST be set before `import config`) ---------------------------
+# Leave the next line ON to save patches.zarr + cells.parquet + webmaps to YOUR LOCAL DISK.
+# Comment it out to write to the shared /mnt store instead (the real 127-site production run).
+os.environ.setdefault("DINO_EMB_ROOT", os.path.join(_ROOT, "outputs", "embeddings_local"))
+
 for _m in ("config", "transforms", "dino", "pca", "plots", "store", "pipeline"):
     sys.modules.pop(_m, None)   # reload fresh from src/ on re-run
 
 import config            # noqa: E402  (sets the DINO env on import — must come first)
 import pipeline          # noqa: E402
+
+print("OUTPUT  ->", config.EMB_ROOT, "(local)" if config.EMB_ROOT.startswith(_ROOT) else "(/mnt shared)")
+print("settings -> high_res:", config.HIGH_RES, "| dtype:", config.DINO_DTYPE, "| model:", config.DINO_MODEL)
 
 
 # %% CELL 2 — choose the sites ------------------------------------------------------
@@ -65,13 +74,13 @@ asyncio.run(dw.download(_model))                # verbose, resumable; no-op if a
 
 
 # %% CELL 4 — RUN (resume-safe; finished sites are skipped) --------------------------
-res = pipeline.run_sites(ok, make_webmap=True, make_plots=False)
+res = pipeline.run_sites(ok)
 print("embedded/ok:", len(res["done"]), "| skipped/failed:", len(res["fails"]))
 
 
 # %% CELL 5 — (optional) 2-GPU on the server: sites split modulo across GPU 0 and 1 -----
 # Option A — ONE command, one process per GPU (output interleaves):
-# pipeline.run_all_gpus(gpus=(0, 1), site_keys=ok, make_webmap=True)
+# pipeline.run_all_gpus(gpus=(0, 1), site_keys=ok)
 #
 # Option B — TWO terminals (clean per-GPU progress bars), each its own GPU + shard:
 #   CUDA_VISIBLE_DEVICES=0 python src/pipeline.py --all-sites --shard 0/2

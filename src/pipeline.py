@@ -1,4 +1,4 @@
-"""One-site orchestrator: training tiles -> grid -> DINO embeddings -> manifest + PCA webmap.
+"""One-site orchestrator: training tiles -> grid -> DINO embeddings -> manifest.
 
 Usage:
     python src/pipeline.py "/home/clement/local_copy_train_data/BHP Creeks 2022/.../v2_tytonai_rg"
@@ -16,13 +16,12 @@ import config
 import transforms
 import dino
 import store as sink   # src/store.py (persistence) — named 'store' to avoid the stdlib 'io' clash
-import pca
 
 
 def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=config.EMB_ROOT,
              dino_model=config.DINO_MODEL, high_res=config.HIGH_RES,
              tile_patches=config.TILE_PATCHES, min_data_cov=config.MIN_DATA_COV,
-             upsample=None, make_plots=False, make_webmap=True, show_bar=True, resume=True) -> dict:
+             upsample=None, show_bar=True, resume=True) -> dict:
     """Build + embed every grid cell of one site. Returns a summary dict.
 
     Two ways to point at a site:
@@ -61,13 +60,6 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
 
     site_dir, part_dir = sink.site_emb_dirs(site_id, out_root)
 
-    # per-site 2x2 QA control image (tiles -> crop -> study area -> grid), always written
-    import plots
-    qa_png = plots.plot_qa_grid(tiles, tiles_clip, extent, area, grid, info=ginfo,
-                                out_png=os.path.join(out_root, site_id, "qa_steps.png"),
-                                title=f"{site_id} — {ginfo['n_cells']} cells")
-    print(f"  QA -> {qa_png}")
-
     act, model, device, grid_w = dino.setup_activity(rgb_path, grid, dino_model=dino_model,
                                                      high_res=high_res)
     refs, cls_vecs = sink.embed_grid(act, model, device, grid_w, rgb_path, site_dir,
@@ -81,27 +73,9 @@ def run_site(site_dir=None, *, site_key=None, res=None, rgb_path=None, out_root=
     sink.write_site_meta(site_id, part_dir, ginfo, refs, dino_model=resolved_model,
                          high_res=high_res, upsample=eff_upsample, emb_root=out_root)
 
-    webmap_tif = None
-    if make_webmap and refs:
-        webmap_tif = os.path.join(out_root, site_id, "dino_pca_webmap.tif")
-        pca.build_pca_webmap(refs, list(grid_w.geometry), grid_w.crs, webmap_tif,
-                             webmap_path=rgb_path)
-
-    if make_plots:
-        import plots
-        plots.plot_tiles(tiles)
-        plots.plot_webmap_crop(tiles, tiles_clip, extent)
-        plots.plot_study_area(tiles_clip, area)
-        plots.plot_grid(tiles_clip, area, grid, info=ginfo)
-        if refs:
-            plots.plot_site_pca(refs, list(grid_w.geometry),
-                                os.path.join(out_root, site_id, "site_patch_pca.png"),
-                                webmap_path=rgb_path)
-
     print(f"[{site_id}] done: {len(refs)} cells -> {site_dir}/patches.zarr  |  {part_dir}/cells.parquet")
     return {"site_id": site_id, "n_tiles": len(tiles), "n_cells": len(grid_w), "ginfo": ginfo,
-            "site_dir": site_dir, "part_dir": part_dir, "webmap_tif": webmap_tif,
-            "qa_png": qa_png, "patch_refs": refs}
+            "site_dir": site_dir, "part_dir": part_dir, "patch_refs": refs}
 
 
 def all_site_keys():
@@ -209,7 +183,7 @@ def run_all_gpus(gpus=(0, 1), site_keys=None, **run_kw):
 
 if __name__ == "__main__":
     import argparse
-    ap = argparse.ArgumentParser(description="Embed site grid(s) with DINOv3 + PCA webmap.")
+    ap = argparse.ArgumentParser(description="Embed site grid(s) with DINOv3 -> patch embeddings + manifest.")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--site-key", help="'<Project>/<Site>' — resolves tiles + webmap from /mnt")
     g.add_argument("--site-dir", help="explicit tiles dir …/<res>/v2_tytonai_rg (e.g. a local copy)")
@@ -221,12 +195,9 @@ if __name__ == "__main__":
     ap.add_argument("--shard", default=None, help="i/n — run sites[i::n] (one terminal/GPU)")
     ap.add_argument("--gpus", default=None, help="comma ids, e.g. 0,1 — spawn one process per GPU")
     ap.add_argument("--limit", type=int, default=None, help="only the first N sites (with --all-sites)")
-    ap.add_argument("--no-webmap", dest="make_webmap", action="store_false")
     ap.add_argument("--no-resume", dest="resume", action="store_false")
-    ap.add_argument("--plots", dest="make_plots", action="store_true")
     a = ap.parse_args()
-    common = dict(res=a.res, out_root=a.out_root, upsample=a.upsample,
-                  make_webmap=a.make_webmap, make_plots=a.make_plots, resume=a.resume)
+    common = dict(res=a.res, out_root=a.out_root, upsample=a.upsample, resume=a.resume)
     if a.all_sites:
         if a.gpus:                                            # one command -> one process per GPU
             run_all_gpus(gpus=tuple(int(x) for x in a.gpus.split(",")), **common)

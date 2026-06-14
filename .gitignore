@@ -12,3 +12,6 @@ embedding_compare.png
 
 # model weights (large, fetched separately)
 dinov3_weights/
+
+# analysis migration bundle (not part of production repo)
+analysis_export/

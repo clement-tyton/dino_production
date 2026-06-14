@@ -11,10 +11,6 @@ import functools
 import json
 import os
 
-# Headless-safe matplotlib: force the non-interactive Agg backend BEFORE any module imports pyplot
-# (plots.py / classes.py). The default Tk backend core-dumps on a threaded/headless server with
-# "Tcl_AsyncDelete: async handler deleted by the wrong thread". Agg just writes PNGs to disk.
-os.environ.setdefault("MPLBACKEND", "Agg")
 import re
 import warnings
 
