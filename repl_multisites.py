@@ -11,6 +11,7 @@ import sys
 # Single GPU: run everything on this physical device. MUST be set before any torch import
 # (our modules import torch lazily, so setting it here is enough). Edit/remove as needed.
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+os.environ.setdefault("DINO_MODEL", "dinov3_vitl16")
 
 # Inference dtype. "bf16" casts the model+input to bfloat16: weights ~half VRAM (7B: 25->12.5GB)
 # and activations halved -> fixes OOM at high upscaling. Outputs are still stored fp32, and the
@@ -41,10 +42,55 @@ print("settings -> high_res:", config.HIGH_RES, "| dtype:", config.DINO_DTYPE, "
 
 
 # %% CELL 2 — choose the sites ------------------------------------------------------
-ALL = pipeline.all_site_keys()                    # every site in config/sites_to_resolutions.json
-print(f"{len(ALL)} sites in the catalog")
-SITES = ALL                                       # or a hand-picked list, e.g.:
-# SITES = ["BHP Creeks 2022/Manned Bens Oasis Post Dry", "BHP_Rehab_2024/MWER2024"]
+# ALL = pipeline.all_site_keys()                 # every site in config/sites_to_resolutions.json
+# print(f"{len(ALL)} sites in the catalog")
+SITES = [
+    'GeoNadir/UAV_Descoberta_Brazil',
+    'BHP 2004/Manned Bens Oasis Nov20',
+    'Caramulla 2020/Manned Caramulla Nov20',
+    'Caramulla 2020/Manned Caramulla',
+    'BHP Creeks 2021/Manned Caramulla Post Wet',
+    'BHP Creeks 2021/Manned Fortescue River Post Dry_V01',
+    'BHP Creeks 2021/Manned PowerSt Post Dry',
+    'BHP Creeks 2021/Manned PowerSt Post Wet',
+    'BHP Creeks 2021/Manned Yandicoogina Q3 October/Mindi',
+    'BHP Creeks 2021/Manned Yandicoogina Q3 October/Yandicoogina',
+    'BHP Creeks 2021/Manned Yandicoogina Q4 November/Mindy2nddeploy',
+    'BHP Creeks 2021/Manned Yandicoogina Q4 November/WANNAMUNNA',
+    'BHP Creeks 2022/Manned Caramulla Post Dry',
+    'BHP Creeks 2022/Manned Fortescue River Post Wet',
+    'BHP Creeks 2022/Manned PowerSt Post Dry',
+    'BHP Creeks 2022/Manned Shovelana Post Dry',
+    'BHP Creeks 2022/Manned Yandicoogina Q1 MarApr/Mindi',
+    'BHP Creeks 2022/Manned Yandicoogina Q1 MarApr/Wannamunna',
+    'BHP Creeks 2022/Manned Yandicoogina Q2 Jun/Mindy',
+    'BHP Creeks 2022/Manned Yandicoogina Q2 Jun/Wannamunna',
+    'BHP Creeks 2022/Manned Yandicoogina Q4 Nov/Mindy',
+    'BHP Creeks 2022/Manned Yandicoogina Q4 Nov/Wannamunna',
+    'BHP Phase 3/Manned Goldsworthy SO',
+    'BHP Phase 3/Manned Nim Shayegap SO',
+    'CM2020/Manned MAC',
+    'EM2020/MWER',
+    'CM2020/Manned Yandi 3band fixed',
+    'BHP Phase 3/Manned Yarrie SO',
+    'Telfer/2220 Mine Site Manned',
+    'Telfer/2220 Access Road Manned',
+    'Telfer/2220 Havieron Mine Site Manned',
+    'Telfer/2220 Havieron Access Road Manned',
+    'Telfer/2053 Havieron Analogue Road',
+    'Telfer/2053 Mine Site Manned',
+    'Telfer/2015 Analogue00 Manned',
+    'Telfer/2015 Manned',
+    'Telfer/1923 Manned',
+    'BHP_Rehab_2025/BHP_2525 Rehab25-Chichester',
+    'BHP_Rehab_2025/BHP_2525 Rehab25-Goldsworthy',
+    'BHP_Rehab_2025/BHP_2525 Rehab25-Yandi',
+    'BHP_Rehab_2025/BHP_2525 Rehab25-Yarrie-Nimingarra',
+    'FMG/FMG_2511_Mindy and EHR_Weeds',
+    'Telfer/GG_2517_Haveiron_EIA_RGBI_10cm_20210420',
+    'Telfer/NEW_Havieron_Minesite_April2023_28351_20230429',
+    '29Metals/29M_2451_GG_UAV',
+]
 
 
 # %% CELL 3 — dry-run: which sites resolve (webmap + tiles) vs skip — no embedding ---
@@ -74,7 +120,7 @@ asyncio.run(dw.download(_model))                # verbose, resumable; no-op if a
 
 
 # %% CELL 4 — RUN (resume-safe; finished sites are skipped) --------------------------
-res = pipeline.run_sites(ok)
+res = pipeline.run_sites(ok, upsample=4)
 print("embedded/ok:", len(res["done"]), "| skipped/failed:", len(res["fails"]))
 
 
