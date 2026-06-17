@@ -10,7 +10,11 @@ dependencies = [
     "pyarrow>=24.0.0",
     "tqdm>=4.68.1",
     "zarr>=3.0.0",               # one chunked patches.zarr per site (replaces per-cell .npz)
-    "bbox_to_tile_grid"
+    "bbox_to_tile_grid",
+    "geopandas>=1.1.3",
+    "rasterio>=1.5.0",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
 ]
 
 [project.optional-dependencies]
