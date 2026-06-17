@@ -113,9 +113,8 @@ for k, e in miss:
 # existence-only check then serves forever. Our downloader is sequential, resumable, size-validated
 # and returns instantly if the file is already complete.
 import asyncio                  # noqa: E402
-import dino                     # noqa: E402  (picks 7B vs ViT-L by this GPU's VRAM)
 import download_weights as dw   # noqa: E402  (repo-root module)
-_model = dino.pick_dino_model()                 # prints the GPU + chosen model
+_model = config.DINO_MODEL                      # use the explicitly configured model
 asyncio.run(dw.download(_model))                # verbose, resumable; no-op if already on disk
 
 
