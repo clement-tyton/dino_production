@@ -224,9 +224,15 @@
   "GeoNadir/UAV_Monrovia_Liberia": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Monrovia_Liberia/Raster/WholeExtent/3cm/RGB_webmap.tif",
+      "source": "RGB_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32629",
+      "size": [
+        54882,
+	32550
+      ]
     }
   },
   "GeoNadir/UAV_Tombstone_AZ": {
@@ -282,9 +288,15 @@
   "GeoNadir/UAV_Korhogo_Liberia": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Korhogo_Liberia/Raster/WholeExtent/3cm/RGB_webmap.tif",
+      "source": "RGB_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32630",
+      "size": [
+        14287,
+	14560
+      ]
     }
   },
   "GeoNadir/UAV_Georgetown_Gambia": {
@@ -1495,17 +1507,17 @@
       ]
     }
   },
-  "29Metals/29M_2451_GG_manned": {
-    "10cm": {
-      "resolution": "10cm",
-      "rgb_path": "/mnt/spatial/DeepThought/SiteData/29Metals/29M_2451_GG_manned/Raster/WholeExtent/10cm/RGB_10cm.vrt",
-      "source": "RGB.vrt",
+  "29Metals/29M_2451_GG_UAV": {
+    "3cm": {
+      "resolution": "3cm",
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/29Metals/29M_2451_GG_UAV/Raster/WholeExtent/3cm/RGB_5cm_webmap.tif",
+      "source": "RGB_5cm_webmap.tif",
       "ok": true,
-      "bands": 3,
+      "bands": 4,
       "crs": "EPSG:28350",
       "size": [
-        115216,
-        88909
+	127088,
+	129953
       ]
     }
   },
