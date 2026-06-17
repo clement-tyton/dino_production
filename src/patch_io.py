@@ -8,6 +8,7 @@ dtype float16, Blosc(zstd, clevel=5, bitshuffle). One file-tree per site instead
 A *ref* identifies one cell: the string "<zarr_path>#<index>". Stored in the manifest relative to
 emb_root; resolved back to an absolute ref for reading. All readers go through load()/shape()/key().
 """
+
 from __future__ import annotations
 
 import os
@@ -31,9 +32,9 @@ def _pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
-        return False                      # no such process
+        return False  # no such process
     except PermissionError:
-        return True                       # exists but owned by another user -> alive
+        return True  # exists but owned by another user -> alive
     except OSError:
         return False
     return True
@@ -42,7 +43,8 @@ def _pid_alive(pid: int) -> bool:
 def acquire_write_lock(site_dir: str) -> str:
     """Refuse to start a 2nd concurrent writer on a site — two processes calling create(overwrite)
     on the same patches.zarr clear each other's chunks + metadata and silently corrupt it (cells
-    become 0). Writes <site_dir>/.writing.lock with our PID; steals a stale lock (dead PID)."""
+    become 0). Writes <site_dir>/.writing.lock with our PID; steals a stale lock (dead PID).
+    """
     lock = os.path.join(site_dir, ".writing.lock")
     if os.path.exists(lock):
         try:
@@ -52,7 +54,8 @@ def acquire_write_lock(site_dir: str) -> str:
         if old and old != os.getpid() and _pid_alive(old):
             raise RuntimeError(
                 f"{zarr_path(site_dir)} is already being written by PID {old} — refusing a second "
-                f"writer (it would corrupt the zarr). Run ONE process per shard.")
+                f"writer (it would corrupt the zarr). Run ONE process per shard."
+            )
     with open(lock, "w") as f:
         f.write(str(os.getpid()))
     return lock
@@ -68,8 +71,13 @@ def release_write_lock(lock: str) -> None:
 def create(site_dir: str, n_cells: int, gh: int, gw: int, c: int):
     """Create (overwrite) the site's patches.zarr and return the writable array. Chunk = 1 cell."""
     return zarr.create_array(
-        store=zarr_path(site_dir), shape=(n_cells, gh, gw, c), chunks=(1, gh, gw, c),
-        dtype="float16", compressors=[_compressor()], overwrite=True)
+        store=zarr_path(site_dir),
+        shape=(n_cells, gh, gw, c),
+        chunks=(1, gh, gw, c),
+        dtype="float16",
+        compressors=[_compressor()],
+        overwrite=True,
+    )
 
 
 def make_ref(zpath: str, idx: int) -> str:
