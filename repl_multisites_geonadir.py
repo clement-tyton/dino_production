@@ -1,5 +1,5 @@
 # %% [markdown]
-# repl_multisites.py — multi-site driver (thin, over src/)
+# repl_multisites_geonadir.py — multi-site driver (thin, over src/)
 # =======================================================
 # Edit SITES, dry-run the resolution (which sites have a webmap + tiles), then RUN.
 # Resume-safe: re-running CELL 4 skips sites whose cells.parquet already exists.
@@ -27,8 +27,6 @@ sys.path.insert(0, _ROOT)   # repo root -> import download_weights
 sys.path.insert(0, _SRC)
 
 # --- OUTPUT LOCATION (MUST be set before `import config`) ---------------------------
-# Leave the next line ON to save patches.zarr + cells.parquet + webmaps to YOUR LOCAL DISK.
-# Comment it out to write to the shared /mnt store instead (the real 127-site production run).
 os.environ.setdefault("DINO_EMB_ROOT", "/mnt/ai/DeepThought/dino_embeddings")
 
 for _m in ("config", "transforms", "dino", "pca", "plots", "store", "pipeline"):
@@ -42,54 +40,12 @@ print("settings -> high_res:", config.HIGH_RES, "| dtype:", config.DINO_DTYPE, "
 
 
 # %% CELL 2 — choose the sites ------------------------------------------------------
-# ALL = pipeline.all_site_keys()                 # every site in config/sites_to_resolutions.json
-# print(f"{len(ALL)} sites in the catalog")
 SITES = [
-    'GeoNadir/UAV_Descoberta_Brazil',
-    'BHP 2004/Manned Bens Oasis Nov20',
-    'Caramulla 2020/Manned Caramulla Nov20',
-    'Caramulla 2020/Manned Caramulla',
-    'BHP Creeks 2021/Manned Caramulla Post Wet',
-    'BHP Creeks 2021/Manned Fortescue River Post Dry_V01',
-    'BHP Creeks 2021/Manned PowerSt Post Dry',
-    'BHP Creeks 2021/Manned PowerSt Post Wet',
-    'BHP Creeks 2021/Manned Yandicoogina Q3 October/Mindi',
-    'BHP Creeks 2021/Manned Yandicoogina Q3 October/Yandicoogina',
-    'BHP Creeks 2021/Manned Yandicoogina Q4 November/Mindy2nddeploy',
-    'BHP Creeks 2021/Manned Yandicoogina Q4 November/WANNAMUNNA',
-    'BHP Creeks 2022/Manned Caramulla Post Dry',
-    'BHP Creeks 2022/Manned Fortescue River Post Wet',
-    'BHP Creeks 2022/Manned PowerSt Post Dry',
-    'BHP Creeks 2022/Manned Shovelana Post Dry',
-    'BHP Creeks 2022/Manned Yandicoogina Q1 MarApr/Mindi',
-    'BHP Creeks 2022/Manned Yandicoogina Q1 MarApr/Wannamunna',
-    'BHP Creeks 2022/Manned Yandicoogina Q2 Jun/Mindy',
-    'BHP Creeks 2022/Manned Yandicoogina Q2 Jun/Wannamunna',
-    'BHP Creeks 2022/Manned Yandicoogina Q4 Nov/Mindy',
-    'BHP Creeks 2022/Manned Yandicoogina Q4 Nov/Wannamunna',
-    'BHP Phase 3/Manned Goldsworthy SO',
-    'BHP Phase 3/Manned Nim Shayegap SO',
-    'CM2020/Manned MAC',
-    'EM2020/MWER',
-    'CM2020/Manned Yandi 3band fixed',
-    'BHP Phase 3/Manned Yarrie SO',
-    'Telfer/2220 Mine Site Manned',
-    'Telfer/2220 Access Road Manned',
-    'Telfer/2220 Havieron Mine Site Manned',
-    'Telfer/2220 Havieron Access Road Manned',
-    'Telfer/2053 Havieron Analogue Road',
-    'Telfer/2053 Mine Site Manned',
-    'Telfer/2015 Analogue00 Manned',
-    'Telfer/2015 Manned',
-    'Telfer/1923 Manned',
-    'BHP_Rehab_2025/BHP_2525 Rehab25-Chichester',
-    'BHP_Rehab_2025/BHP_2525 Rehab25-Goldsworthy',
-    'BHP_Rehab_2025/BHP_2525 Rehab25-Yandi',
-    'BHP_Rehab_2025/BHP_2525 Rehab25-Yarrie-Nimingarra',
-    'FMG/FMG_2511_Mindy and EHR_Weeds',
-    'Telfer/GG_2517_Haveiron_EIA_RGBI_10cm_20210420',
-    'Telfer/NEW_Havieron_Minesite_April2023_28351_20230429',
-    '29Metals/29M_2451_GG_UAV',
+    'GeoNadir/UAV_Ampudia_Spain',
+    'GeoNadir/UAV_Brewerville_Liberia',
+    'GeoNadir/UAV_Colunga_Spain',
+    'GeoNadir/UAV_Georgetown_Gambia',
+    'GeoNadir/UAV_Olympia_USA',
 ]
 
 

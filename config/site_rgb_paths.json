@@ -142,9 +142,15 @@
   "GeoNadir/UAV_Brewerville_Liberia": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Brewerville_Liberia/Raster/WholeExtent/3cm/RGB_3cm_webmap.tif",
+      "source": "RGB_3cm_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32629",
+      "size": [
+        45178,
+        73237
+      ]
     }
   },
   "GeoNadir/UAV_Daboase_Ghana": {
@@ -172,9 +178,15 @@
   "GeoNadir/UAV_Ampudia_Spain": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Ampudia_Spain/Raster/WholeExtent/3cm/RGB_3cm_webmap.tif",
+      "source": "RGB_3cm_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32630",
+      "size": [
+        26617,
+        28728
+      ]
     }
   },
   "GeoNadir/UAV_Cedaredge_CO": {
@@ -208,9 +220,15 @@
   "GeoNadir/UAV_Olympia_USA": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Olympia_USA/Raster/WholeExtent/3cm/RGB_3cm_webmap.tif",
+      "source": "RGB_3cm_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32610",
+      "size": [
+        15042,
+        11338
+      ]
     }
   },
   "GeoNadir/UAV_Sabinar_Spain": {
@@ -252,9 +270,15 @@
   "GeoNadir/UAV_Colunga_Spain": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Colunga_Spain/Raster/WholeExtent/3cm/RGB_3cm_webmap.tif",
+      "source": "RGB_3cm_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32630",
+      "size": [
+        22952,
+        23358
+      ]
     }
   },
   "GeoNadir/UAV_Curepto_Chile": {
@@ -302,9 +326,15 @@
   "GeoNadir/UAV_Georgetown_Gambia": {
     "3cm": {
       "resolution": "3cm",
-      "rgb_path": null,
-      "source": null,
-      "ok": false
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/GeoNadir/UAV_Georgetown_Gambia/Raster/WholeExtent/3cm/RGB_3cm_webmap.tif",
+      "source": "RGB_3cm_webmap.tif",
+      "ok": true,
+      "bands": 4,
+      "crs": "EPSG:32628",
+      "size": [
+        18750,
+        14637
+      ]
     }
   },
   "BHP Creeks 2022/Manned PowerSt Post Wet": {
