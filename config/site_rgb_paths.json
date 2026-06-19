@@ -1008,8 +1008,8 @@
   "BHP Creeks 2021/Manned Caramulla Post Wet": {
     "10cm": {
       "resolution": "10cm",
-      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned Caramulla Post Wet/Raster/WholeExtent/10cm/RGBI_10cm.vrt",
-      "source": "RGBI.vrt",
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned Caramulla Post Wet/Raster/WholeExtent/10cm/RGBI_webmap.tif",
+      "source": "RGBI_webmap.tif",
       "ok": true,
       "bands": 4,
       "crs": "EPSG:28351",
@@ -1064,8 +1064,8 @@
   "BHP Creeks 2021/Manned PowerSt Post Dry": {
     "10cm": {
       "resolution": "10cm",
-      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned PowerSt Post Dry/Raster/WholeExtent/10cm/RGBI_10cm.vrt",
-      "source": "RGBI.vrt",
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned PowerSt Post Dry/Raster/WholeExtent/10cm/RGBI_webmap.tif",
+      "source": "RGBI_webmap.tif",
       "ok": true,
       "bands": 4,
       "crs": "EPSG:28350",
@@ -1204,8 +1204,8 @@
   "BHP Creeks 2021/Manned Yandicoogina Q3 October/Yandicoogina": {
     "10cm": {
       "resolution": "10cm",
-      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned Yandicoogina Q3 October/Yandicoogina/Raster/WholeExtent/10cm/RGBI_10cm.vrt",
-      "source": "RGBI.vrt",
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/BHP Creeks 2021/Manned Yandicoogina Q3 October/Yandicoogina/Raster/WholeExtent/10cm/RGBI_10cm.tif",
+      "source": "RGBI_10cm.tif",
       "ok": true,
       "bands": 4,
       "crs": "EPSG:28350",
@@ -1984,8 +1984,8 @@
   "Caramulla 2020/Manned Caramulla Nov20": {
     "10cm": {
       "resolution": "10cm",
-      "rgb_path": "/mnt/spatial/DeepThought/SiteData/Caramulla 2020/Manned Caramulla Nov20/Raster/WholeExtent/10cm/RGBI_10cm.vrt",
-      "source": "RGBI.vrt",
+      "rgb_path": "/mnt/spatial/DeepThought/SiteData/Caramulla 2020/Manned Caramulla Nov20/Raster/WholeExtent/10cm/RGBI_webmap.tif",
+      "source": "RGBI_webmap.tif",
       "ok": true,
       "bands": 4,
       "crs": "EPSG:28351",
